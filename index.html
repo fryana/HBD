@@ -19,12 +19,12 @@ body{
 @keyframes twinkle{from{opacity:.15}to{opacity:1}}
 
 /* ── SCENE ── */
-#scene{position:relative;width:440px;height:580px;
+#scene{position:relative;width:440px;height:520px;
   display:flex;flex-direction:column;align-items:center;justify-content:flex-end;z-index:1}
 
 /* ── HAPPY BIRTHDAY ── */
 #hbd{
-  position:absolute;top:6px;width:100%;text-align:center;
+  position:absolute;bottom:285px;top:auto;width:100%;text-align:center;
   font-family:'Mistral','Brush Script MT',cursive;font-size:52px;font-weight:400;
   letter-spacing:1px;
   background:linear-gradient(90deg,#ff6b6b,#ffd93d,#6bcb77,#4d96ff,#ff6b9d,#ffd93d);
@@ -41,7 +41,7 @@ body{
 
 /* ── STITCH ── */
 #stitch{
-  position:absolute;bottom:6px;opacity:0;
+  position:absolute;bottom:18px;opacity:0;
   transform:scale(0) translateY(70px);
   transition:opacity .7s,transform .8s cubic-bezier(.34,1.56,.64,1);
   z-index:20;filter:drop-shadow(0 14px 28px rgba(0,100,220,.45));
@@ -77,14 +77,18 @@ body{
   animation:svgGlow .4s ease-in-out infinite alternate}
 
 /* ── SVG Crumble & Smoke ── */
-@keyframes slabFall{
-  0%  {transform:translateY(0) rotate(0deg);opacity:1}
   60% {transform:translateY(var(--fallY)) rotate(var(--tilt));opacity:.8}
   100%{transform:translateY(calc(var(--fallY)*1.8)) rotate(var(--tilt));opacity:0}
 }
-@keyframes svgCrumble{
-  0%  {transform:translate(0,0) rotate(0deg);opacity:1}
   100%{transform:translate(var(--cx),var(--cy)) rotate(var(--cr));opacity:0}
+}
+@keyframes cakeSlideL{
+  0%  {transform:translateX(0) rotate(0deg)}
+  100%{transform:translateX(-82px) rotate(-7deg)}
+}
+@keyframes cakeSlideR{
+  0%  {transform:translateX(0) rotate(0deg)}
+  100%{transform:translateX(82px) rotate(7deg)}
 }
 @keyframes svgSmoke{
   0%  {transform:translate(0,0) scale(.5);opacity:.7}
@@ -351,65 +355,57 @@ function blowCandles(){
   });
 }
 
-// ── Crumble cake ──
+// ── Split cake ──
 function crumbleCake(){
-  const NS='http://www.w3.org/2000/svg';
   const svg=document.getElementById('cake-svg');
-  const cols=['#ff85a1','#e8528c','#c084fc','#ffd700','#fff','#ff6b6b','#ffa500','#4d96ff','#ffe066'];
+  const scene=document.getElementById('scene');
 
-  // Big cake "slab" chunks that fall straight down
-  const slabW=44;
-  const numSlabs=Math.ceil(352/slabW);
-  for(let s=0;s<numSlabs;s++){
-    const sx=44+s*slabW;
-    const delay=(s%2===0?0:120)+(Math.random()*80);
-    const slab=document.createElementNS(NS,'rect');
-    slab.setAttribute('x',sx); slab.setAttribute('y',262);
-    slab.setAttribute('width',slabW); slab.setAttribute('height',172);
-    slab.setAttribute('fill',cols[s%cols.length]);
-    slab.setAttribute('clip-path','url(#cakeClip)');
-    const tiltDir=(s<numSlabs/2)?-1:1;
-    const tilt=(Math.random()*18+5)*tiltDir;
-    const fallY=200+Math.random()*120;
-    slab.style.cssText=`transform-box:fill-box;transform-origin:center bottom;`+
-      `animation:slabFall .9s ${delay}ms cubic-bezier(.55,0,1,.7) forwards`;
-    slab.style.setProperty('--tilt',tilt+'deg');
-    slab.style.setProperty('--fallY',fallY+'px');
-    svg.appendChild(slab);
+  // Get SVG position relative to scene
+  const svgR=svg.getBoundingClientRect();
+  const scR=scene.getBoundingClientRect();
+  const svgTop=svgR.top-scR.top;
+  const svgLeft=svgR.left-scR.left;
+  const W=svgR.width, H=svgR.height;
+  const halfW=W/2;
+
+  // Build a half-clone: a clipped div containing a full SVG clone
+  function makeHalf(side){
+    const wrap=document.createElement('div');
+    wrap.style.cssText=
+      'position:absolute;overflow:hidden;pointer-events:none;z-index:15;'+
+      'width:'+halfW+'px;height:'+H+'px;'+
+      'top:'+svgTop+'px;'+
+      (side==='left'?'left:'+svgLeft+'px;':'left:'+(svgLeft+halfW)+'px;')+
+      'transform-origin:'+(side==='left'?'right bottom':'left bottom')+';';
+
+    const clone=svg.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+    clone.style.cssText=
+      'position:absolute;top:0;'+
+      (side==='left'?'left:0;':'left:-'+halfW+'px;')+
+      'width:'+W+'px;height:'+H+'px;overflow:visible;display:block;';
+    wrap.appendChild(clone);
+    scene.appendChild(wrap);
+    return wrap;
   }
 
-  // Small crumbs scatter downward
-  for(let i=0;i<40;i++){
-    const el=document.createElementNS(NS,'rect');
-    const sz=6+Math.random()*18;
-    const x=50+Math.random()*340, y=270+Math.random()*160;
-    const cx=((Math.random()-.5)*160).toFixed(0);
-    const cy=(Math.random()*260+120).toFixed(0);
-    const cr=((Math.random()-.5)*540).toFixed(0);
-    const delay=Math.random()*300;
-    el.setAttribute('x',x); el.setAttribute('y',y);
-    el.setAttribute('width',sz); el.setAttribute('height',sz); el.setAttribute('rx',3);
-    el.setAttribute('fill',cols[Math.floor(Math.random()*cols.length)]);
-    el.style.cssText=`transform-box:fill-box;--cx:${cx}px;--cy:${cy}px;--cr:${cr}deg;`+
-      `animation:svgCrumble 1.2s ${delay}ms ease-in forwards`;
-    svg.appendChild(el);
-  }
+  const leftHalf=makeHalf('left');
+  const rightHalf=makeHalf('right');
 
-  // Fade out the original cake elements (not scale/translate)
-  setTimeout(()=>{
-    // hide original rects/ellipses but keep crumbs visible
-    svg.querySelectorAll('rect:not([style*="slabFall"]):not([style*="svgCrumble"]),ellipse,line,text,g').forEach(el=>{
-      if(!el.style.animation){
-        el.style.transition='opacity .5s';
-        el.style.opacity='0';
-      }
-    });
-  },150);
+  // Hide original SVG
+  svg.style.opacity='0';
 
-  setTimeout(()=>{
-    svg.style.display='none';
-  },1400);
+  // Animate halves open
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const ease='cubic-bezier(.25,1,.5,1)';
+    leftHalf.style.transition='transform .95s '+ease;
+    leftHalf.style.transform='translateX(-82px) rotate(-7deg)';
+    rightHalf.style.transition='transform .95s '+ease;
+    rightHalf.style.transform='translateX(82px) rotate(7deg)';
+  }));
 }
+
 
 // ── Confetti ──
 function confetti(){
